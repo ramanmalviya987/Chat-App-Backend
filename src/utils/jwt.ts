@@ -1,13 +1,18 @@
 import jwt from "jsonwebtoken";
+import { env } from "../config/env.js";
 
 export const generateToken = (userId: string) => {
   return jwt.sign(
     {
       userId,
     },
-    process.env.JWT_SECRET!,
+    env.JWT_SECRET,
     {
-      expiresIn: process.env.JWT_EXPIRES_IN,
-    }
+      expiresIn: env.JWT_EXPIRES_IN,
+    },
   );
+};
+
+export const verifyToken = (token: string) => {
+  return jwt.verify(token, env.JWT_SECRET);
 };

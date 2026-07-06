@@ -1,6 +1,8 @@
 import type { NextFunction, Request, Response } from "express";
 import { ZodError } from "zod";
 import { AppError } from "../errors/app-error.js";
+import jwt from "jsonwebtoken";
+
 
 export const errorMiddleware = (
   err: Error,
@@ -8,7 +10,6 @@ export const errorMiddleware = (
   res: Response,
   next: NextFunction,
 ) => {
-  
   if (err instanceof AppError) {
     return res.status(err.statusCode).json({
       success: false,
@@ -21,6 +22,19 @@ export const errorMiddleware = (
       success: false,
       message: "Validation Failed",
       errors: err.flatten().fieldErrors,
+    });
+  }
+  if (err instanceof jwt.JsonWebTokenError) {
+    return res.status(401).json({
+      success: false,
+      message: "Invalid token",
+    });
+  }
+
+  if (err instanceof jwt.TokenExpiredError) {
+    return res.status(401).json({
+      success: false,
+      message: "Token expired",
     });
   }
 

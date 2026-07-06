@@ -19,4 +19,12 @@ export const authController = {
       data,
     });
   },
+  async me(req: Request, res: Response) {
+    const user = await authService.me(req.user.id);
+
+    res.status(200).json({
+      success: true,
+      data: user,
+    });
+  },
 };
