@@ -12,11 +12,135 @@ datasource db {
   provider = "postgresql"
 }
 
+// ==========================================
+// USER
+// ==========================================
+
 model User {
+  // Primary Key
   id        String   @id @default(cuid())
+
+  // User Information
   name      String
   email     String   @unique
   password  String
+
+  // Audit Fields
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  // ----------------------------------------
+  // Relations
+  // ----------------------------------------
+
+  // One User -> Many ConversationParticipants
+  participants ConversationParticipant[]
+
+  // One User -> Many Messages
+  messages Message[]
+}
+
+// ==========================================
+// ENUMS
+// ==========================================
+
+enum ConversationType {
+  DIRECT
+  GROUP
+}
+
+// ==========================================
+// CONVERSATION
+// ==========================================
+
+model Conversation {
+  // Primary Key
+  id String @id @default(cuid())
+
+  // DIRECT or GROUP
+  type ConversationType
+
+  // Audit Fields
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // ----------------------------------------
+  // Relations
+  // ----------------------------------------
+
+  // One Conversation -> Many Participants
+  participants ConversationParticipant[]
+
+  // One Conversation -> Many Messages
+  messages Message[]
+}
+
+// ==========================================
+// CONVERSATION PARTICIPANT
+// ==========================================
+
+model ConversationParticipant {
+  // Foreign Keys
+  conversationId String
+  userId         String
+
+  // When user joined the conversation
+  joinedAt DateTime @default(now())
+
+  // ----------------------------------------
+  // Relations
+  // ----------------------------------------
+
+  // Many Participants -> One Conversation
+  conversation Conversation @relation(fields: [conversationId], references: [id])
+
+  // Many Participants -> One User
+  user User @relation(fields: [userId], references: [id])
+
+  // Composite Primary Key
+  // Prevents duplicate participants
+  @@id([conversationId, userId])
+
+  // Used to quickly fetch all conversations of a user
+  @@index([userId])
+}
+
+// ==========================================
+// MESSAGE
+// ==========================================
+
+model Message {
+  // Primary Key
+  id String @id @default(cuid())
+
+  // Foreign Keys
+  conversationId String
+  senderId       String
+
+  // Message Content
+  content String
+
+  // Audit Fields
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // ----------------------------------------
+  // Relations
+  // ----------------------------------------
+
+  // Many Messages -> One Conversation
+  conversation Conversation @relation(fields: [conversationId], references: [id])
+
+  // Many Messages -> One User (Sender)
+  sender User @relation(fields: [senderId], references: [id])
+
+  // ----------------------------------------
+  // Indexes
+  // ----------------------------------------
+
+  // Fetch messages of a conversation efficiently
+  @@index([conversationId])
+
+  // Fetch messages sent by a user efficiently
+  @@index([senderId])
 }
