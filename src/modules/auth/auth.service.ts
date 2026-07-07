@@ -3,6 +3,7 @@ import { prisma } from "../../lib/prisma.js";
 import type { RegisterInput, LoginInput } from "./auth.validation.js";
 import { AppError } from "../../errors/app-error.js";
 import { generateToken } from "../../utils/jwt.js";
+import { generateId } from "../../utils/id.js";
 
 export const authService = {
   async register(data: RegisterInput) {
@@ -17,6 +18,7 @@ export const authService = {
     const hashedPassword = await bcrypt.hash(data.password, 10);
     const user = await prisma.user.create({
       data: {
+        id: generateId(),
         name: data.name,
         email: data.email,
         password: hashedPassword,
