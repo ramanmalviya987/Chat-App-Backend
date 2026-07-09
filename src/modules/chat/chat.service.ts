@@ -5,14 +5,11 @@ import type { CreateDirectChatInput } from "./chat.validation.js";
 import { Prisma } from "../../generated/prisma/client.js";
 
 export const chatService = {
-  async createDirectChat(
-    currentUserId: string,
-    data: CreateDirectChatInput
-  ) {
+  async createDirectChat(currentUserId: string, data: CreateDirectChatInput) {
     const { receiverId } = data;
-   
+
     // Step 1: User cannot start a chat with themselves
-   
+
     if (currentUserId === receiverId) {
       throw new AppError(400, "You cannot chat with yourself.");
     }
@@ -109,69 +106,88 @@ export const chatService = {
     }
   },
 
-// Get all messages of a chat
-async getChatMessages(currentUserId: string, chatId: string) {
-  // Step 1:
-  // Check whether the chat exists
-  const chat = await prisma.chat.findUnique({
-    where: {
-      id: chatId,
-    },
-    select: {
-      id: true,
-    },
-  });
-
-  if (!chat) {
-    throw new AppError(404, "Chat not found.");
-  }
-
-  // Step 2:
-  // Verify the logged-in user belongs to this chat.
-  // This prevents unauthorized users from reading messages.
-  const isMember = await prisma.chatMember.findUnique({
-    where: {
-      chatId_userId: {
-        chatId,
-        userId: currentUserId,
+  // Get all messages of a chat
+  async getChatMessages(
+    currentUserId: string,
+    chatId: string,
+    cursor?: string,
+    limit: number = 30,
+  ) {
+    // Step 1:
+    // Check whether the chat exists
+    const chat = await prisma.chat.findUnique({
+      where: {
+        id: chatId,
       },
-    },
-  });
+      select: {
+        id: true,
+      },
+    });
 
-  if (!isMember) {
-    throw new AppError(
-      403,
-      "You are not authorized to access this chat."
-    );
-  }
+    if (!chat) {
+      throw new AppError(404, "Chat not found.");
+    }
 
-  // Step 3:
-  // Fetch all messages ordered from oldest to newest.
-  // Also return sender information so the frontend
-  // can display the sender name without another API call.
-  
-  const messages = await prisma.message.findMany({
-    where: {
-      chatId,
-    },
-    orderBy: {
-      createdAt: "asc",
-    },
-    select: {
-      id: true,
-      content: true,
-      createdAt: true,
-
-      sender: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
+    // Step 2:
+    // Verify the logged-in user belongs to this chat.
+    // This prevents unauthorized users from reading messages.
+    const isMember = await prisma.chatMember.findUnique({
+      where: {
+        chatId_userId: {
+          chatId,
+          userId: currentUserId,
         },
       },
-    },
-  });
+    });
 
-  return messages;
-},
+    if (!isMember) {
+      throw new AppError(403, "You are not authorized to access this chat.");
+    }
+
+    // Step 3:
+    // Fetch all messages ordered from oldest to newest.
+    // Also return sender information so the frontend
+    // can display the sender name without another API call.
+
+    const messages = await prisma.message.findMany({
+      where: {
+        chatId,
+      },
+
+      take: limit,
+
+      ...(cursor && {
+        skip: 1,
+        cursor: {
+          id: cursor,
+        },
+      }),
+
+      orderBy: {
+        createdAt: "desc",
+      },
+
+      select: {
+        id: true,
+        content: true,
+        createdAt: true,
+        readAt: true,
+
+        sender: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+    });
+    messages.reverse();
+    const nextCursor = messages.length === limit ? messages[0]?.id : null;
+
+    return {
+      messages,
+      nextCursor,
+    };
+  },
 };

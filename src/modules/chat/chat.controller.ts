@@ -18,7 +18,12 @@ export const chatController = {
   async getChatMessages(req: Request, res: Response) {
   const messages = await chatService.getChatMessages(
     req.user.id,
-    req.params.chatId as any
+    req.params.chatId as any,
+    req.query.cursor as string | undefined,
+    Number(req.query.limit) || 30
+
+
+    
   );
 
   res.status(200).json({

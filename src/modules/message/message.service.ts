@@ -2,6 +2,8 @@ import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../errors/app-error.js";
 import { generateId } from "../../utils/id.js";
 import type { SendMessageInput } from "./message.validation.js";
+import { getIO } from "../../socket/socket.js";
+import { SOCKET_EVENTS } from "../../socket/events.js";
 
 export const messageService = {
   async sendMessage(currentUserId: string, data: SendMessageInput) {
@@ -33,6 +35,7 @@ export const messageService = {
       },
       select: {
         id: true,
+        chatId: true,
         content: true,
         createdAt: true,
 
@@ -45,6 +48,10 @@ export const messageService = {
         },
       },
     });
+
+    const io = getIO();
+
+    io.to(chatId).emit(SOCKET_EVENTS.NEW_MESSAGE, message);
 
     return message;
   },
