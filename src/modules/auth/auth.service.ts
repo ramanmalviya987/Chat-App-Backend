@@ -4,6 +4,10 @@ import type { RegisterInput, LoginInput } from "./auth.validation.js";
 import { AppError } from "../../errors/app-error.js";
 import { generateToken } from "../../utils/jwt.js";
 import { generateId } from "../../utils/id.js";
+import { s3Client } from "../../config/aws.js";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { GetObjectCommand } from "@aws-sdk/client-s3";
+import { env } from "../../config/env.js";
 
 export const authService = {
   async register(data: RegisterInput) {
@@ -67,6 +71,8 @@ export const authService = {
         email: true,
         createdAt: true,
         updatedAt: true,
+        avatarUrl: true,
+
       },
     });
 
@@ -74,6 +80,24 @@ export const authService = {
       throw new AppError(404, "User not found");
     }
 
-    return user;
+    let signedAvatarUrl: string | null = null;
+
+if (user.avatarUrl) {
+  signedAvatarUrl = await getSignedUrl(
+    s3Client,
+    new GetObjectCommand({
+      Bucket: env.AWS_BUCKET_NAME,
+      Key: user.avatarUrl,
+    }),
+    {
+      expiresIn: 60 * 60, // 1 hour
+    }
+  );
+}
+
+    return {
+      ...user,
+  avatarUrl: signedAvatarUrl,
+    };
   },
 };

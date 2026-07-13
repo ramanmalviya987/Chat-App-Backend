@@ -2,6 +2,7 @@ import type { NextFunction, Request, Response } from "express";
 import { ZodError } from "zod";
 import { AppError } from "../errors/app-error.js";
 import jwt from "jsonwebtoken";
+import multer from "multer";
 
 
 export const errorMiddleware = (
@@ -10,6 +11,20 @@ export const errorMiddleware = (
   res: Response,
   next: NextFunction,
 ) => {
+
+  if (err instanceof multer.MulterError) {
+  if (err.code === "LIMIT_FILE_SIZE") {
+    return res.status(400).json({
+      success: false,
+      message: "Image size must be less than 5 MB",
+    });
+  }
+
+  return res.status(400).json({
+    success: false,
+    message: err.message,
+  });
+}
   if (err instanceof AppError) {
     return res.status(err.statusCode).json({
       success: false,
@@ -44,4 +59,7 @@ export const errorMiddleware = (
     success: false,
     message: "Internal Server Error",
   });
+
+  
 };
+
