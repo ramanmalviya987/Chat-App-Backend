@@ -23,7 +23,6 @@ export const registerSocketHandlers = (io: Server) => {
     io.emit(SOCKET_EVENTS.USER_ONLINE, userId);
 
     // Read Receipts
-   
     socket.on(SOCKET_EVENTS.MARK_CHAT_READ, ({ chatId }) => {
       handleMarkChatRead(io, socket, chatId);
     });
