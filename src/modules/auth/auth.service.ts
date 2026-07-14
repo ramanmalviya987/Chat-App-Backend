@@ -37,28 +37,47 @@ export const authService = {
     return user;
   },
   async login(data: LoginInput) {
-    const user = await prisma.user.findUnique({
-      where: {
-        email: data.email,
-      },
-    });
-    if (!user) {
-      throw new AppError(401, "Invalid email or password");
-    }
-    const isPasswordValid = await bcrypt.compare(data.password, user.password);
-    if (!isPasswordValid) {
-      throw new AppError(401, "Invalid email or password");
-    }
-    const token = generateToken(user.id);
+    try {
+      const user = await prisma.user.findUnique({
+        where: {
+          email: data.email,
+        },
+      });
+      if (!user) {
+        throw new AppError(401, "Invalid email or password");
+      }
+      const isPasswordValid = await bcrypt.compare(
+        data.password,
+        user.password,
+      );
+      if (!isPasswordValid) {
+        throw new AppError(401, "Invalid email or password");
+      }
+      const token = generateToken(user.id);
 
-    return {
-      token,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-      },
-    };
+      return {
+        token,
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+        },
+      };
+    } catch (err:any) {
+      console.error(
+        "=== FULL ERROR ===",
+        JSON.stringify(err, Object.getOwnPropertyNames(err), 2),
+      );
+      console.error(
+        "=== DRIVER ADAPTER ERROR ===",
+        err?.meta?.driverAdapterError,
+      );
+      console.error(
+        "=== NESTED CAUSE ===",
+        err?.meta?.driverAdapterError?.cause,
+      );
+      throw err;
+    }
   },
   async me(userId: string) {
     const user = await prisma.user.findUnique({
@@ -72,7 +91,6 @@ export const authService = {
         createdAt: true,
         updatedAt: true,
         avatarUrl: true,
-
       },
     });
 
@@ -82,22 +100,22 @@ export const authService = {
 
     let signedAvatarUrl: string | null = null;
 
-if (user.avatarUrl) {
-  signedAvatarUrl = await getSignedUrl(
-    s3Client,
-    new GetObjectCommand({
-      Bucket: env.AWS_BUCKET_NAME,
-      Key: user.avatarUrl,
-    }),
-    {
-      expiresIn: 60 * 60, // 1 hour
+    if (user.avatarUrl) {
+      signedAvatarUrl = await getSignedUrl(
+        s3Client,
+        new GetObjectCommand({
+          Bucket: env.AWS_BUCKET_NAME,
+          Key: user.avatarUrl,
+        }),
+        {
+          expiresIn: 60 * 60, // 1 hour
+        },
+      );
     }
-  );
-}
 
     return {
       ...user,
-  avatarUrl: signedAvatarUrl,
+      avatarUrl: signedAvatarUrl,
     };
   },
 };
